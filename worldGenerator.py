@@ -1,26 +1,21 @@
 import pygame
 import math
 import random
-from typing import List, Tuple
 
 
 class Tiles:
-    def __init__(self, size, colour):
-        self.file = file
-        self.size = size
-        self.image = pygame.image.load(file)
-        self.rect = self.image.get_rect()
+    def __init__(self, tile_size):
+        self.tile_size = tile_size
         self.tiles = []
         self.load()
-        self.colour = colour
 
 
 class PerlinNoise:
-    def __init__(self, seed: int = None):
+    def __init__(self, seed):
         random.seed(seed)
-        self.perm = list(range(256))
-        random.shuffle(self.perm)
-        self.perm += self.perm
+        self.permutation_table = list(range(256))
+        random.shuffle(self.permutation_table)
+        self.permutation_table += self.permutation_table
         self.gradients = [
             (1, 1),
             (-1, 1),
@@ -32,56 +27,58 @@ class PerlinNoise:
             (0, -1)
         ]
 
-    def _fade(self, t: float) -> float:
-        return t * t * t * (t * (t * 6 - 15) + 10)
+    def _fade(self, distance):
+        return distance * distance * distance * (distance * (distance * 6 - 15) + 10)
 
-    def _lerp(self, a: float, b: float, t: float) -> float:
-        return a + t * (b - a)
+    def _lerp(self, start_value, end_value, interpolation_factor):
+        return start_value + interpolation_factor * (end_value - start_value)
 
-    def _dot_product(self, grad: Tuple[int, int], x: float, y: float) -> float:
-        return grad[0] * x + grad[1] * y
+    def _dot_product(self, gradient, x, y):
+        return gradient[0] * x + gradient[1] * y
 
-    def _get_gradient(self, x: int, y: int) -> Tuple[int, int]:
-        hash_val = self.perm[(self.perm[x % 256] + y) % 256] % 8
-        return self.gradients[hash_val]
+    def _get_gradient(self, x, y):
+        hash_value = self.permutation_table[(self.permutation_table[x % 256] + y) % 256] % 8
+        return self.gradients[hash_value]
 
-    def noise(self, x: float, y: float) -> float:
-        x0 = math.floor(x)
-        y0 = math.floor(y)
-        x1 = x0 + 1
-        y1 = y0 + 1
+    def noise(self, x, y):
+        grid_x0 = math.floor(x)
+        grid_y0 = math.floor(y)
+        grid_x1 = grid_x0 + 1
+        grid_y1 = grid_y0 + 1
 
-        sx = x - x0
-        sy = y - y0
+        delta_x = x - grid_x0
+        delta_y = y - grid_y0
 
-        u = self._fade(sx)
-        v = self._fade(sy)
+        fade_x = self._fade(delta_x)
+        fade_y = self._fade(delta_y)
 
-        g00 = self._get_gradient(x0, y0)
-        g10 = self._get_gradient(x1, y0)
-        g01 = self._get_gradient(x0, y1)
-        g11 = self._get_gradient(x1, y1)
+        grad_bottom_left = self._get_gradient(grid_x0, grid_y0)
+        grad_bottom_right = self._get_gradient(grid_x1, grid_y0)
+        grad_top_left = self._get_gradient(grid_x0, grid_y1)
+        grad_top_right = self._get_gradient(grid_x1, grid_y1)
 
-        n00 = self._dot_product(g00, sx, sy)
-        n10 = self._dot_product(g10, sx - 1, sy)
-        n01 = self._dot_product(g01, sx, sy - 1)
-        n11 = self._dot_product(g11, sx - 1, sy - 1)
-        nx0 = self._lerp(n00, n10, u)
-        nx1 = self._lerp(n01, n11, u)
-        result = self._lerp(nx0, nx1, v)
+        dot_bottom_left = self._dot_product(grad_bottom_left, delta_x, delta_y)
+        dot_bottom_right = self._dot_product(grad_bottom_right, delta_x - 1, delta_y)
+        dot_top_left = self._dot_product(grad_top_left, delta_x, delta_y - 1)
+        dot_top_right = self._dot_product(grad_top_right, delta_x - 1, delta_y - 1)
 
-        return (result + 1) * 0.5
+        interp_x_bottom = self._lerp(dot_bottom_left, dot_bottom_right, fade_x)
+        interp_x_top = self._lerp(dot_top_left, dot_top_right, fade_x)
 
-    def generate_noise_map(self, width: int, height: int, scale: float = 1.0) -> List[List[float]]:
-        if scale <= 0:
-            scale = 0.0001
+        final_noise_value = self._lerp(interp_x_bottom, interp_x_top, fade_y)
 
-        noise_map = [[0 for _ in range(width)] for _ in range(height)]
+        return (final_noise_value + 1) * 0.5
 
-        for y in range(height):
-            for x in range(width):
-                sample_x = x / scale
-                sample_y = y / scale
+    def generate_noise_map(self, map_width, map_height, scale_factor=1.0):
+        if scale_factor <= 0:
+            scale_factor = 0.0001
+
+        noise_map = [[0 for _ in range(map_width)] for _ in range(map_height)]
+
+        for y in range(map_height):
+            for x in range(map_width):
+                sample_x = x / scale_factor
+                sample_y = y / scale_factor
 
                 noise_value = self.noise(sample_x, sample_y)
 
@@ -92,27 +89,28 @@ class PerlinNoise:
 
 if __name__ == "__main__":
     pygame.init()
-    s_width, s_height = 20, 20
-    screen = pygame.display.set_mode((s_width, s_height))
-    seed = None
-    perlin = PerlinNoise(seed)
+    screen_width, screen_height = 20, 20
+    screen = pygame.display.set_mode((screen_width, screen_height))
+    seed_value = None
+    perlin = PerlinNoise(seed_value)
 
-    width, height = 20, 20
-    world = pygame.Surface((width, height))
+    map_width, map_height = 100, 100
+    world_surface = pygame.Surface((map_width, map_height))
 
-    scale = 10.0
-    print(seed)
+    scale_factor = 10.0
+    print(seed_value)
 
-    noise_map = perlin.generate_noise_map(width, height, scale)
-    with open('../Prototype (no need to look)/World Generation/example.txt', 'w') as file:
-        file.write(str(noise_map))
+    noise_map = perlin.generate_noise_map(map_width, map_height, scale_factor)
+    with open('example.txt', 'w') as output_file:
+        output_file.write(str(noise_map))
+
     clock = pygame.time.Clock()
-    running = True
-    while running:
+    is_running = True
+    while is_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-        world.fill((0, 0, 0))
+                is_running = False
+        world_surface.fill((0, 0, 0))
         pygame.display.flip()
         pygame.display.update()
         clock.tick(60)
