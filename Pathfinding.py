@@ -125,7 +125,7 @@ def display_grid_with_path(grid, path=None):
                 elif (x, y) == path[-1]:
                     row += "E "  # End point
                 else:
-                    row += "* "  # Path points
+                    row += "¬ "  # Path points
             elif grid[y][x] == 1:
                 row += "# "  # Wall
             else:
@@ -163,9 +163,9 @@ if __name__ == "__main__":
     path = pathfinder.find_path(start_pos, end_pos)
 
     if path:
-        print(f"Path found! Length: {len(path)}")
+        print(f"Path found. Length: {len(path)} tiles.")
         print(f"Path coordinates: {path}")
-        print("\nGrid with path (S = start, E = end, * = path):")
+        print("\nGrid with path (S = start, E = end, ¬ = path, # = wall):")
         display_grid_with_path(example_grid, path)
     else:
-        print("No path found!")
+        print("No path found")
