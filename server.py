@@ -10,9 +10,14 @@ clients = []
 players = {}  # player_id -> position
 world_seed = random.randint(1, 1000000)  # generate world once
 
-start_positions = [(200, 200), (500, 500)]  # adjust for more players
+start_positions = [(200, 200), (500, 500), (300, 300), (400, 400), (100, 100), (600, 600), (700, 700), (800, 800)]
 
-
+"""
+Name: send_packet
+Parameters: conn (socket): Client socket, packet (dict): Data packet
+Returns: None
+Purpose: Sends a JSON packet to a single client.
+"""
 def send_packet(conn, packet):
     try:
         conn.send((json.dumps(packet) + "\n").encode())
@@ -20,13 +25,23 @@ def send_packet(conn, packet):
         if conn in clients:
             clients.remove(conn)
 
-
+"""
+Name: broadcast
+Parameters: packet (dict): Data packet, skip_conn (socket | None): Connection to skip
+Returns: None
+Purpose: Sends a packet to all connected clients except one.
+"""
 def broadcast(packet, skip_conn=None):
     for c in list(clients):
         if c != skip_conn:
             send_packet(c, packet)
 
-
+"""
+Name: handle_client
+Parameters: conn (socket): Client socket, player_id (int): Player identifier
+Returns: None
+Purpose: Handles incoming messages from a single client.
+"""
 def handle_client(conn, player_id):
     buffer = ""
     while True:
@@ -54,7 +69,12 @@ def handle_client(conn, player_id):
     if player_id in players:
         del players[player_id]
 
-
+"""
+Name: main
+Parameters: None
+Returns: None
+Purpose: Starts the multiplayer server and accepts client connections.
+"""
 def main():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
